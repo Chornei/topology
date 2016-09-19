@@ -354,7 +354,7 @@ class CommonNode(BaseNode):
 
         return response
 
-    def _register_shell(self, name, shellobj):
+    def _register_shell(self, name, shell_class, **kwargs):
         """
         Implementation of the private ``_register_shell`` interface.
 
@@ -364,14 +364,14 @@ class CommonNode(BaseNode):
 
         See :meth:`HighLevelShellAPI._register_shell` for more information.
         """
-        assert isinstance(shellobj, BaseShell)
+        assert issubclass(shell_class, BaseShell)
 
         if name in self._shells:
             raise KeyError('Shell "{}" already registered'.format(name))
         if not name:
             raise KeyError('Invalid name for shell "{}"'.format(name))
 
-        self._shells[name] = shellobj
+        self._shells[name] = shell_class(self, name, **kwargs)
 
     # LowLevelShellAPI
 
@@ -487,28 +487,6 @@ class CommonNode(BaseNode):
         """
         self._enabled = False
 
-    def _log_command(self, command, shell):
-        """
-        Command logging function for low-level shell API usage.
-
-        :param str command: Sent command to be logged.
-        :param str shell: Name of the shell that sends the command.
-        """
-
-        print(
-            '{} [{}].send_command(\'{}\', shell=\'{}\') ::'.format(
-                datetime.now().isoformat(), self.identifier, command, shell
-            )
-        )
-
-    def _log_response(self, response, shell):
-        """
-        Response logging function for low-level shell API usage.
-
-        :param str response: Command response to be logged.
-        :param str shell: Name of the shell that receives the command response.
-        """
-        print(response.encode(self._shells[shell]._encoding))
 
 __all__ = [
     'HighLevelShellAPI',

@@ -160,7 +160,14 @@ class BaseShell(object):
 
     The behavior of these operations is defined in the following methods,
     implementations of this class are expected to behave as defined here.
+
+    :param `topology.base.BaseNode` node: Node tat holds this shell.
     """
+
+    @abstractmethod
+    def __init__(self, node, name, **kwargs):
+        self._node = node
+        self._name
 
     @property
     def default_connection(self):
@@ -277,7 +284,7 @@ class BaseShell(object):
         """
 
     def _register_loggers(
-        self, node, shell, command_logger=None, response_logger=None
+        self, shell, command_logger=None, response_logger=None
     ):
         """
         Register logger functions for command executions and responses.
@@ -343,14 +350,16 @@ class PExpectShell(BaseShell):
     """
 
     def __init__(
-            self, prompt,
-            initial_command=None, initial_prompt=None,
-            user=None, user_match='[uU]ser:',
-            password=None, password_match='[pP]assword:',
-            prefix=None, timeout=None, encoding='utf-8',
-            try_filter_echo=True, auto_connect=True,
-            spawn_args=None, **kwargs):
+        self, node, name, prompt,
+        initial_command=None, initial_prompt=None,
+        user=None, user_match='[uU]ser:',
+        password=None, password_match='[pP]assword:',
+        prefix=None, timeout=None, encoding='utf-8',
+        try_filter_echo=True, auto_connect=True,
+        spawn_args=None, **kwargs
+    ):
 
+        super(PExpectShell, self).__init__(node, name, **kwargs)
         self._connections = OrderedDict()
         self._default_connection = None
 
@@ -469,7 +478,11 @@ class PExpectShell(BaseShell):
             spawn.send(command)
 
         if not silent and self._command_logger is not None:
-            self._command_logger(command, self._shell)
+            log.debug(
+                '{} [{}].send_command(\'{}\', shell=\'{}\') ::'.format(
+                    datetime.now().isoformat(), self.identifier, command, shell
+                )
+            )
 
         # Expect matches
         if timeout is None:
@@ -511,7 +524,7 @@ class PExpectShell(BaseShell):
         response = '\n'.join(lines)
 
         if not silent and self._response_logger is not None:
-            self._response_logger(response, self._shell)
+            log.debug(response.encode(self._shells[shell]._encoding))
 
         return response
 
@@ -601,11 +614,13 @@ class PExpectBashShell(PExpectShell):
     FORCED_PROMPT = '@~~==::BASH_PROMPT::==~~@'
 
     def __init__(
-            self,
-            initial_prompt='\w+@.+:.+[#$] ', try_filter_echo=False,
-            **kwargs):
+        self, node, name, initial_prompt='\w+@.+:.+[#$] ',
+        try_filter_echo=False, **kwargs
+    ):
 
         super(PExpectBashShell, self).__init__(
+            node,
+            name,
             PExpectBashShell.FORCED_PROMPT,
             initial_prompt=initial_prompt,
             try_filter_echo=try_filter_echo,
