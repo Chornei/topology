@@ -26,10 +26,13 @@ from logging import getLogger
 from re import sub as regex_sub
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
+from warnings import warn
+from os.path import join
 
 from pexpect import spawn as Spawn  # noqa
 from six import add_metaclass
 
+from topology import LOG_PATH
 
 log = getLogger(__name__)
 
@@ -65,6 +68,10 @@ purpose of executing commands and parsing their outputs
 ``[m|K|h|H|r]?``
   Match zero or one occurrences of either ``m``, ``K``, ``h``, ``H`` or ``r``.
 """
+
+
+class DeprecatedTopologyFunction(UserWarning):
+    pass
 
 
 class NonExistingConnectionError(Exception):
@@ -160,6 +167,16 @@ class BaseShell(object):
 
     The behavior of these operations is defined in the following methods,
     implementations of this class are expected to behave as defined here.
+
+    Be aware that the method ``_register_shell`` of the node will add two
+    attributes to the shell objects:
+
+    #. ``_name``: name of the shell, the matching key of the node's dictionary
+       of shells
+    #. ``_node``: node object that holds the shell object
+
+    The ``_register_shell`` method is usually called in the node's'
+    ``__init__``.
     """
 
     @property
@@ -276,11 +293,24 @@ class BaseShell(object):
          defined, the default connection will be set up.
         """
 
+    def _register_node(self, node_identifier, shell_name):
+        """
+        Register the node identifier and the assigned shell name on that node
+        in the shell for logging back reference.
+
+        :param str node_identifier: The identifier of the owner node.
+        :param str shell_name: Shell name given in the node to this shell.
+        """
+
     def _register_loggers(
         self, node, shell, command_logger=None, response_logger=None
     ):
         """
         Register logger functions for command executions and responses.
+
+        .. warning::
+
+           This function will be removed in future releases.
 
         :param :class:`topology.base.BaseNode` node: Node that holds this
          shell.
@@ -290,18 +320,6 @@ class BaseShell(object):
         :param function response_logger: Function that logs the command
          response. If set to None, the node's _log_response will be used.
         """
-
-        self._shell = shell
-
-        if command_logger is None:
-            self._command_logger = node._log_command
-        else:
-            self._command_logger = command_logger
-
-        if response_logger is None:
-            self._response_logger = node._log_response
-        else:
-            self._response_logger = response_logger
 
 
 @add_metaclass(ABCMeta)
@@ -368,6 +386,8 @@ class PExpectShell(BaseShell):
         self._auto_connect = auto_connect
         self._command_logger = None
         self._response_logger = None
+        self._node_identifier = None
+        self._shell_name = None
 
         # Doing this to avoid having a mutable object as default value in the
         # arguments.
@@ -468,8 +488,14 @@ class PExpectShell(BaseShell):
         else:
             spawn.send(command)
 
-        if not silent and self._command_logger is not None:
-            self._command_logger(command, self._shell)
+        if not silent:
+            # self._node and self._name were added to this shell in the node's
+            # call to its _register_shell method.
+            log.debug(
+                '[{}].send_command(\'{}\', shell=\'{}\') ::'.format(
+                    self._node.identifier, command, self._name
+                )
+            )
 
         # Expect matches
         if timeout is None:
@@ -510,8 +536,8 @@ class PExpectShell(BaseShell):
 
         response = '\n'.join(lines)
 
-        if not silent and self._response_logger is not None:
-            self._response_logger(response, self._shell)
+        if not silent:
+            log.debug(response)
 
         return response
 
@@ -533,6 +559,19 @@ class PExpectShell(BaseShell):
             raise AlreadyConnectedError(connection)
 
         # Create a child process
+
+        self._spawn_args['logfile'] = join(
+            LOG_PATH,
+            '_'.join(
+                [
+                    self._test_suite,
+                    self._node.identifier,
+                    self._name,
+                    connection
+                ]
+            )
+        )
+
         spawn = Spawn(
             self._get_connect_command().strip(),
             **self._spawn_args
@@ -587,6 +626,33 @@ class PExpectShell(BaseShell):
         if not spawn.isalive():
             raise AlreadyDisconnectedError(connection)
         spawn.close()
+
+    def _register_node(self, node_identifier, shell_name):
+        self._node_identifier = node_identifier
+        self._shell_name = shell_name
+
+    def _register_loggers(
+        self, node, shell, command_logger=None, response_logger=None
+    ):
+
+        warn(
+            'This method is deprecated, instead of calling _register_loggers '
+            'in the shell object, please just call _register_shell in the'
+            ' node that holds the shell object.',
+            category=DeprecatedTopologyFunction
+        )
+
+        self._shell = shell
+
+        if command_logger is None:
+            self._command_logger = node._log_command
+        else:
+            self._command_logger = command_logger
+
+        if response_logger is None:
+            self._response_logger = node._log_response
+        else:
+            self._response_logger = response_logger
 
 
 class PExpectBashShell(PExpectShell):

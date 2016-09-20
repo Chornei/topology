@@ -373,6 +373,10 @@ class CommonNode(BaseNode):
 
         self._shells[name] = shellobj
 
+        # Add the node identifier and the shell name to the shell object to
+        # enable logging in the shell object itself
+        shellobj._register_node(self.identifier, name)
+
     # LowLevelShellAPI
 
     def get_shell(self, shell):

@@ -38,6 +38,12 @@ from topology.platforms.shell import (
 
 
 class Shell(PExpectBashShell):
+    def __init__(self, prompt, **kwargs):
+        super(Shell, self).__init__(prompt, **kwargs)
+        self._node = Mock()
+        self._node.identifier = 'node'
+        self._name = 'shell'
+
     def _get_connect_command(self):
         return 'test connection command '
 

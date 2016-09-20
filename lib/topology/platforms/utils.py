@@ -31,6 +31,7 @@ from pkg_resources import iter_entry_points
 
 from .node import BaseNode
 
+LOG_PATH = None
 
 log = logging.getLogger(__name__)
 
