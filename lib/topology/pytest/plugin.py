@@ -67,12 +67,14 @@ class TopologyPlugin(object):
     """
 
     def __init__(
-            self, platform, plot_dir, plot_format, nml_dir, injected_attr):
+            self, platform, plot_dir, plot_format,
+            nml_dir, injected_attr, log_dir):
         self.platform = platform
         self.plot_dir = plot_dir
         self.plot_format = plot_format
         self.nml_dir = nml_dir
         self.injected_attr = injected_attr
+        self.log_dir = log_dir
 
     def pytest_report_header(self, config):
         """
@@ -86,6 +88,10 @@ class TopologyPlugin(object):
         if self.nml_dir:
             header.append("          nml_dir='{}'".format(
                 self.nml_dir
+            ))
+        if self.log_dir:
+            header.append("          log_dir='{}'".format(
+                self.log_dir
             ))
 
         return '\n'.join(header)
@@ -102,10 +108,16 @@ def topology(request):
     - https://pytest.org/latest/builtin.html#_pytest.python.FixtureRequest
     """
     from ..manager import TopologyManager
+    from ..logging import manager as logmanager
 
     plugin = request.config._topology_plugin
     module = request.module
     topomgr = TopologyManager(plugin.platform)
+
+    # Setup framework logging
+    if plugin.log_dir:
+        logmanager.logging_directory = plugin.log_dir
+    logmanager.logging_context = module.__name__
 
     # Finalizer unbuild the topology and plot it
     def finalizer():
@@ -290,7 +302,8 @@ def pytest_configure(config):
 
     # Create and register plugin
     config._topology_plugin = TopologyPlugin(
-        platform, plot_dir, plot_format.lstrip('.'), nml_dir, injected_attr
+        platform, plot_dir, plot_format.lstrip('.'),
+        nml_dir, injected_attr, log_dir
     )
     config.pluginmanager.register(config._topology_plugin)
 

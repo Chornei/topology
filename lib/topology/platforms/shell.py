@@ -22,17 +22,17 @@ topology shell api module.
 from __future__ import unicode_literals, absolute_import
 from __future__ import print_function, division
 
+from warnings import warn
 from logging import getLogger
 from re import sub as regex_sub
-from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
-from warnings import warn
-from os.path import join
+from abc import ABCMeta, abstractmethod
 
-from pexpect import spawn as Spawn  # noqa
 from six import add_metaclass
+from pexpect import spawn as Spawn  # noqa
 
-from topology import LOG_PATH
+from ...logging import get_logger
+
 
 log = getLogger(__name__)
 
@@ -559,22 +559,17 @@ class PExpectShell(BaseShell):
             raise AlreadyConnectedError(connection)
 
         # Create a child process
-
-        self._spawn_args['logfile'] = join(
-            LOG_PATH,
-            '_'.join(
-                [
-                    self._test_suite,
-                    self._node.identifier,
-                    self._name,
-                    connection
-                ]
+        spawn_args = {
+            'logfile': get_logger(
+                '{}.{}.{}'.format(
+                    self._node_identifier, self._shell_name, connection
+                ), 'pexpect'
             )
-        )
+        }.update(self._spawn_args)
 
         spawn = Spawn(
             self._get_connect_command().strip(),
-            **self._spawn_args
+            **spawn_args
         )
         self._connections[connection] = spawn
 
