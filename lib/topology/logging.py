@@ -54,11 +54,14 @@ class PexpectLogger(BaseLogger):
         super(BaseLogger, self).set_log_dir(log_dir)
         if self._log_dir:
 
+            # Remove old file handler
+            if self._file_handler:
+                self.logger.removeHandler(self._file_handler)
+
             # Create file hanlder
             fh = logging.FileHandler(
                 join(self._log_dir, self._name, '.log')
             )
-            fh.setLevel(self._level)
 
             # Create formatter
             formatter = logging.Formatter('%(message)s')
