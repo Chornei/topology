@@ -27,7 +27,9 @@ from distutils.dir_util import mkpath
 
 
 class BaseLogger(object):
-    def __init__(self, name, level=logging.NOTSET, log_dir=None):
+    def __init__(
+        self, name, level=logging.NOTSET, log_dir=None, *args, **kwargs
+    ):
         self._name = name
         self._level = level
         self._log_dir = log_dir
@@ -45,13 +47,14 @@ class BaseLogger(object):
 
 class PexpectLogger(BaseLogger):
     def __init__(self, *args, **kwargs):
-        super(BaseLogger, self).__init__(*args, **kwargs)
+        super(PexpectLogger, self).__init__(*args, **kwargs)
+        self._encoding = kwargs.get('encoding', 'utf-8')
         self._file_handler = None
         self.set_level(self._level)
         self.set_log_dir(self._log_dir)
 
     def set_log_dir(self, log_dir):
-        super(BaseLogger, self).set_log_dir(log_dir)
+        super(PexpectLogger, self).set_log_dir(log_dir)
         if self._log_dir:
 
             # Remove old file handler
@@ -60,7 +63,7 @@ class PexpectLogger(BaseLogger):
 
             # Create file hanlder
             fh = logging.FileHandler(
-                join(self._log_dir, self._name, '.log')
+                join(self._log_dir, '.'.join([self._name, 'log']))
             )
 
             # Create formatter
@@ -75,7 +78,7 @@ class PexpectLogger(BaseLogger):
             self.logger.removeHandler(self._file_handler)
 
     def write(self, data):
-        self.logger.log(self._level, data)
+        self.logger.log(self._level, data.decode(self._encoding))
 
     def flush(self):
         pass

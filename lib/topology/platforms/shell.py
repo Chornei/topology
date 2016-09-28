@@ -31,7 +31,7 @@ from abc import ABCMeta, abstractmethod
 from six import add_metaclass
 from pexpect import spawn as Spawn  # noqa
 
-from ...logging import get_logger
+from topology.logging import get_logger
 
 
 log = getLogger(__name__)
@@ -493,7 +493,7 @@ class PExpectShell(BaseShell):
             # call to its _register_shell method.
             log.debug(
                 '[{}].send_command(\'{}\', shell=\'{}\') ::'.format(
-                    self._node.identifier, command, self._name
+                    self._node_identifier, command, self._shell_name
                 )
             )
 
@@ -559,17 +559,19 @@ class PExpectShell(BaseShell):
             raise AlreadyConnectedError(connection)
 
         # Create a child process
-        spawn_args = {
-            'logfile': get_logger(
-                '{}.{}.{}'.format(
-                    self._node_identifier, self._shell_name, connection
-                ), 'pexpect'
-            )
-        }.update(self._spawn_args)
+        self._spawn_args.update(
+            {
+                'logfile': get_logger(
+                    '{}.{}.{}'.format(
+                        self._node_identifier, self._shell_name, connection
+                    ), 'pexpect'
+                ),
+            }
+        )
 
         spawn = Spawn(
             self._get_connect_command().strip(),
-            **spawn_args
+            **self._spawn_args
         )
         self._connections[connection] = spawn
 

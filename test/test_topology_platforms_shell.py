@@ -99,7 +99,8 @@ def test_spawn_args(spawn, shell):
     shell.connect()
 
     spawn.assert_called_with(
-        'test connection command', echo=False, env={'TERM': 'dumb'}
+        'test connection command', echo=False, env={'TERM': 'dumb'},
+        logfile=shell._spawn_args['logfile']
     )
 
     shell = Shell(
@@ -109,7 +110,8 @@ def test_spawn_args(spawn, shell):
     shell.connect()
 
     spawn.assert_called_with(
-        'test connection command', env={'TERM': 'smart'}, echo=True
+        'test connection command', env={'TERM': 'smart'}, echo=True,
+        logfile=shell._spawn_args['logfile']
     )
 
 
