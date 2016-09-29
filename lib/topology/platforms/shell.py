@@ -23,7 +23,6 @@ from __future__ import unicode_literals, absolute_import
 from __future__ import print_function, division
 
 from warnings import warn
-from logging import getLogger
 from re import sub as regex_sub
 from collections import OrderedDict
 from abc import ABCMeta, abstractmethod
@@ -32,9 +31,6 @@ from six import add_metaclass
 from pexpect import spawn as Spawn  # noqa
 
 from topology.logging import get_logger
-
-
-log = getLogger(__name__)
 
 
 TERM_CODES_REGEX = r'\x1b[E|\[](\?)?([0-9]{1,2}(;[0-9]{1,2})?)?[m|K|h|H|r]?'
@@ -491,7 +487,7 @@ class PExpectShell(BaseShell):
         if not silent:
             # self._node and self._name were added to this shell in the node's
             # call to its _register_shell method.
-            log.debug(
+            spawn._logger.logger.info(
                 '[{}].send_command(\'{}\', shell=\'{}\') ::'.format(
                     self._node_identifier, command, self._shell_name
                 )
@@ -537,7 +533,7 @@ class PExpectShell(BaseShell):
         response = '\n'.join(lines)
 
         if not silent:
-            log.debug(response)
+            spawn._logger.logger.info(response)
 
         return response
 
@@ -574,6 +570,12 @@ class PExpectShell(BaseShell):
             **self._spawn_args
         )
         self._connections[connection] = spawn
+
+        spawn._logger = get_logger(
+            '{}.{}.{}'.format(
+                self._node_identifier, self._shell_name, connection
+            ), 'connection'
+        )
 
         try:
             # If connection is via user
